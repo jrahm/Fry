@@ -1,5 +1,5 @@
 package main
 
 fn main()
-    a.b+c()
+    a.b + c("hello")
 end
