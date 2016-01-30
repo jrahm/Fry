@@ -1,0 +1,5 @@
+package main
+
+fn main()
+    a.b+c()
+end
