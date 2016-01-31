@@ -2,18 +2,6 @@ package main
 
 infixr >> 50
 
-data Maybe of A
-
-    struct Just
-        value :: A
-    end
-
-    struct Nothing
-
-    end
-
-end
-
 fn main()
     println()
 
@@ -21,8 +9,6 @@ fn main()
         println()
         println()
         println()
-
-        return 9
     end
 
     nother() >> nother() >> nother() >> nother()

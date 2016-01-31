@@ -1,0 +1,38 @@
+package main
+
+infixr >> 50
+
+data Maybe of B
+    struct Just
+        value: B
+    end
+
+    struct Nil
+    end
+end
+
+struct Other A B C D
+    func: A -> B -> C -> D
+end
+
+struct List of A
+    head: A
+    tail: Maybe( List(A) )
+end
+
+fn [M: Monad] seq(a: M(A), b: M(B))
+    bind(a, lam _. b)
+end
+
+fn main()
+    println()
+
+    fn nother()
+        println()
+        println()
+        println()
+    end
+
+    nother() >> nother() >> nother() >> nother()
+
+end
