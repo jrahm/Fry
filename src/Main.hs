@@ -7,6 +7,7 @@ import Language.Fry.Tokenizer
 import Language.Fry.AST
 import Language.Fry.ParsecHelp
 import Language.Fry.Pretty
+import Language.Fry.Interpret.Interpreter
 
 import System.Environment
 import qualified Data.Text as Text
@@ -18,11 +19,11 @@ import qualified Data.Map as M
 
 import Text.Parsec
 
-data FryState = FryState {operator_map :: Map String Op}
-addOperator :: Op -> FryState -> FryState
+data FryParseState = FryParseState {operator_map :: Map String Op}
+addOperator :: Op -> FryParseState -> FryParseState
 addOperator op fs = fs {operator_map = M.insert (op_symbol op) op (operator_map fs)}
 
-type Parser = Parsec [Token SourcePos] FryState
+type Parser = Parsec [Token SourcePos] FryParseState
 
 operators :: Map String Op
 operators = M.fromList $ map (\o@(Op s _ _) -> (s, o)) [
@@ -71,7 +72,7 @@ expression = try (do
 
         compop :: String -> String -> Parser Bool
         compop o1 o2 = do
-                    FryState {operator_map = ops} <- getState
+                    FryParseState {operator_map = ops} <- getState
 
                     op1@(Op _ prec1 _) <- maybeFail ("Unknown operator: " ++ o1) $ M.lookup o1 ops
                     op2@(Op _ prec2 assoc) <- maybeFail ("Unknown operator: " ++ o2) $ M.lookup o2 ops
@@ -116,7 +117,9 @@ main = (>>=) getArgs $ \argv -> do
         Left err -> print err
         Right tokens -> do
             mapM_ prettyPrint tokens
-            let ps' = runParser parseModule (FryState operators) (head argv) tokens
+            let ps' = runParser parseModule (FryParseState operators) (head argv) tokens
             case ps' of
                 Left err -> print err
-                Right ast -> prettyPrint ast
+                Right ast -> do
+                    prettyPrint ast
+                    interpret ast
