@@ -17,6 +17,7 @@ data TokenType =
         | Comma
         | Operator
         | String
+        | Number
 
         deriving (Show, Eq, Ord)
 
@@ -57,12 +58,14 @@ mtoken = spaces2 *> mtoken' <* spaces2
             , (,) Comma <$> comma
             , (,) Operator <$> operator
             , (,) String <$> rstring
+            , (,) Number <$> number
             ]
 
         identifier = liftM2 (:) (satisfy isAlpha) (many (satisfy (\c -> isAlphaNum c || isDigit c || c == '_')))
         paren = return <$> oneOf "()"
         comma = string ","
         operator = many1 $ satisfy (`member`operatorChars)
+        number = many1 digit
         rstring = char '"' *> many scanString <* char '"'
             where
                 scanString =

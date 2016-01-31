@@ -1,5 +1,9 @@
 package main
 
+infixr >> 50
+infixl *> 10
+infixl <* 10
+
 fn main()
-    a.b + c("hello")
+    a *> b <* c
 end
