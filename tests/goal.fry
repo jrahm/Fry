@@ -2,6 +2,13 @@ package main
 
 infixr >> 50
 
+template until(expr: Expression, stmt: Statement) -> Statement
+    switch(stmt)
+        case Statement as s
+        end
+    end
+end
+
 data Maybe of B
     struct Just
         value: B
@@ -11,7 +18,7 @@ data Maybe of B
     end
 end
 
-struct Other A B C D
+struct Other of A B C D
     func: A -> B -> C -> D
 end
 
@@ -26,6 +33,8 @@ end
 
 fn main()
     println()
+
+    until(x > 3, x = x + 2)
 
     fn nother()
         println()

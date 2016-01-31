@@ -13,7 +13,7 @@ import Text.Printf
 import Safe
 
 data Associativity = LA | RA deriving Show
-data Op = Op {op_symbol :: String, op_prec :: Int, op_orient :: Associativity}
+data Op = Op {op_symbol :: String, op_prec :: Int, op_orient :: Associativity, op_alias :: String}
 
 takeUntil :: (Stream s m (Token a), Show a) => (Token a -> Bool) -> ParsecT s u m [Token a]
 takeUntil fn = many (satisfyToken (not . fn))

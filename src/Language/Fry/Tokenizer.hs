@@ -48,8 +48,9 @@ mtoken :: Parser (Token SourcePos)
 mtoken = spaces2 *> mtoken' <* spaces2
     where
         mtoken' = do
+            pos <- sourcePos
             (typ, str) <- mtoken''
-            Token <$> sourcePos <*> pure typ <*> pure str
+            Token <$> pure pos <*> pure typ <*> pure str
 
         mtoken'' = choice [
               (,) Identifier <$> identifier

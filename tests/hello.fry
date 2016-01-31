@@ -1,6 +1,7 @@
 package main
 
-infixr >> 50
+infixr >> 50 seq
+infixl <*> 21 apply
 
 fn main()
     println()

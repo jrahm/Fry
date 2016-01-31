@@ -26,11 +26,11 @@ addOperator op fs = fs {operator_map = M.insert (op_symbol op) op (operator_map 
 type Parser = Parsec [Token SourcePos] FryParseState
 
 operators :: Map String Op
-operators = M.fromList $ map (\o@(Op s _ _) -> (s, o)) [
-                Op "=" 0 RA,
-                Op "|" 5 LA, Op "&" 5 LA,
-                Op "+" 10 LA, Op "-" 10 LA,
-                Op "*" 20 LA, Op "/" 20 LA, Op "%" 20 LA
+operators = M.fromList $ map (\o@(Op {op_symbol = s}) -> (s, o)) [
+                Op "=" 0 RA "set",
+                Op "|" 5 LA "or", Op "&" 5 LA "and",
+                Op "+" 10 LA "add", Op "-" 10 LA "subtract",
+                Op "*" 20 LA "multiply", Op "/" 20 LA "divide", Op "%" 20 LA "modulo"
             ]
 
 parseModule :: Parser Package
@@ -44,8 +44,9 @@ statementOrInfix =
         assoc <- try (keyword "infixl" $> LA) <|> try (keyword "infixr" $> RA)
         op <- operator
         number <- readValue
+        alias <- identifier
         eos
-        updateState (addOperator (Op op number assoc))
+        updateState (addOperator (Op op number assoc alias))
         statementOrInfix
         ) <|> statement
 
@@ -74,8 +75,8 @@ expression = try (do
         compop o1 o2 = do
                     FryParseState {operator_map = ops} <- getState
 
-                    op1@(Op _ prec1 _) <- maybeFail ("Unknown operator: " ++ o1) $ M.lookup o1 ops
-                    op2@(Op _ prec2 assoc) <- maybeFail ("Unknown operator: " ++ o2) $ M.lookup o2 ops
+                    op1@(Op _ prec1 _ _) <- maybeFail ("Unknown operator: " ++ o1) $ M.lookup o1 ops
+                    op2@(Op _ prec2 assoc _) <- maybeFail ("Unknown operator: " ++ o2) $ M.lookup o2 ops
 
                     case prec1 `compare` prec2 of
                             GT -> return True

@@ -4,10 +4,17 @@ endif
 
 syn region    fryString        start=+\(L\|u\|u8\|U\|R\|LR\|u8R\|uR\|UR\)\="+ skip=+\\\\\|\\"+ end=+"+ contains=cSpecial,cFormat,@Spell extend
 
-syn keyword fryKeyword fn while if else end of var for infixr infixl struct this typeclass instance data switch case as package blackjack hookers
+syn keyword fryKeyword fn while if else end of var for struct this typeclass instance data switch case as package blackjack hookers
 syn keyword fryStorage static public private native
 syn keyword fryStatement return
 syn keyword fryType auto
+
+syn region fryInfix start=+infix\(r\|l\)+ end=+\n+ contains=fryInfixFunction,fryInfixKeyword,fryOperator,fryNumber
+syn keyword fryInfixKeyword infixr infixl contained
+syn match fryInfixFunction +[A-Za-z_][A-Za-z0-9_]*+ contained
+
+hi link fryInfixKeyword fryKeyword
+hi link fryInfixFunction fryFunction
 
 syn match fryAnnotation +@\w\+\(([^)]*)\)\?+ contains=fryAnnotationName
 syn match fryAnnotationName +@\w\++ contained
