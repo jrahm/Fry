@@ -16,4 +16,13 @@ fn main(test: T -> G, testa: A -> B)
 end
 
 fn collatz(n: Int) -> Int
+    if n == 1
+        0
+    else
+        if n % 2 = 0
+            collatz(n / 2)
+        else
+            collatz(1 + n * 3)
+        end
+    end
 end

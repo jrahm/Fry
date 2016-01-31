@@ -25,6 +25,11 @@ data Statement annot =
                    function_body :: [Statement annot],
                    statement_annotation :: annot}
 
+       | IfStmt {if_expression :: Expression annot,
+                 if_body :: [Statement annot],
+                 if_else :: [Statement annot],
+                 statement_annotation :: annot}
+
        | StmtExpr {stmtexpr_expression :: Expression annot, statement_annotation :: annot}
 
        deriving Show
@@ -64,6 +69,13 @@ instance Pretty (Statement a) where
             maybe "" (\expr -> " -> " ++ pretty expr) rettyp
             ++ "\n\n"
         ++ indent (concatMap pretty body) ++ "\nend\n"
+
+    pretty (IfStmt expr body elsebody _) =
+        printf "if %s\n%s\n%s\nend"
+            (pretty expr) (indent $ concatMap pretty body)
+            (if not (null elsebody) then
+                printf "else\n%s" (indent $ concatMap pretty elsebody) else "")
+
     pretty (StmtExpr expr _) = pretty expr ++ "\n"
 
 instance Pretty (Package a) where

@@ -68,10 +68,10 @@ parameterList = option [] $
 statement :: Parser (Statement SourcePos)
 statement = try (do
         (Token _ _ s) <- lookAhead anyToken
-        when (s == "end") $ parserFail ""
+        when (s == "end" || s == "else") $ parserFail ""
     ) *> statement'
     where
-        statement' = function <|> statementExpr
+        statement' = function <|> ifstmt <|> statementExpr
 
         parseRettype :: Parser (Maybe (Expression SourcePos))
         parseRettype =
@@ -83,6 +83,12 @@ statement = try (do
             try (keyword "fn") *>
                 (Function <$> identifier <*> (openParen *> parameterList <* closeParen) <*> (parseRettype <* eos) <*>
                     (many statement <* eob))
+
+        ifstmt = annotate $
+            try (keyword "if") *>
+                (IfStmt <$> expression <*> (eos *> many statement) <*>
+                (keyword "else" *> eos *> many statement <|> return []))
+                <* eob
 
         statementExpr = annotate $ StmtExpr <$> expression <* eos
 
