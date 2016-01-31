@@ -17,12 +17,12 @@ singletonMap = M.fromList [("println", Func (\_ _ -> putStrLn "!!println!!"))]
 interpret :: (Show a) => Package a -> IO ()
 interpret (Package _ stmts a) = do
     st <- foldM interpretStatement (FryState singletonMap) stmts
-    void $ interpretExpr st (Call (ExprIdentifier "main" a) a)
+    void $ interpretExpr st (Call (ExprIdentifier "main" a) [] a)
 
     where
         interpretStatement :: (Show a) => FryState -> Statement a -> IO FryState
         interpretStatement state@(FryState mp) stmt = case stmt of
-            (Function name body _) ->
+            (Function name _ _ body _) ->
                 return $ FryState $
                     M.insert name (Func $ \_ st -> foldM_ interpretStatement st body) mp
             (StmtExpr expr _) -> interpretExpr state expr
@@ -35,7 +35,7 @@ interpret (Package _ stmts a) = do
                 (BinOp ">>" lhs rhs _) -> do
                     state' <- interpretExpr state lhs
                     interpretExpr state' rhs
-                (Call (ExprIdentifier x annot) _) ->
+                (Call (ExprIdentifier x annot) _ _) ->
                     case M.lookup x mp of
                         Nothing -> error (show annot ++ ": " ++ x ++ ": no such function")
                         Just v -> case v of

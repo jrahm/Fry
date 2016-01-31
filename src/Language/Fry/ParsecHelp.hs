@@ -75,6 +75,14 @@ isEOS _ = False
 eos :: (Stream s m (Token a), Show a) => ParsecT s u m ()
 eos = void $ satisfyToken isEOS
 
+comma :: (Stream s m (Token a), Show a) => ParsecT s u m ()
+comma = void $ satisfyToken isComma
+    where
+        isComma (Token _ Comma _) = True
+        isComma _ = False
+
+
+
 eob :: (Stream s m (Token a), Show a) => ParsecT s u m ()
 eob = void $ many eos *> satisfyToken isEOB <* many eos
     where isEOB (Token _ Identifier "end") = True
@@ -88,6 +96,12 @@ openParen = satisfyToken (\(Token _ t s) -> s == "(")
 
 closeParen :: (Stream s m (Token a), Show a) => ParsecT s u m (Token a)
 closeParen = satisfyToken (\(Token _ t s) -> s == ")")
+
+openBracket :: (Stream s m (Token a), Show a) => ParsecT s u m (Token a)
+openBracket = satisfyToken (\(Token _ t s) -> s == "[")
+
+closeBracket :: (Stream s m (Token a), Show a) => ParsecT s u m (Token a)
+closeBracket = satisfyToken (\(Token _ t s) -> s == "]")
 
 readValue :: (Stream s m (Token a), Show a, Read b) => ParsecT s u m b
 readValue = do

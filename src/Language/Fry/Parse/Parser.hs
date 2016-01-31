@@ -56,6 +56,13 @@ parsePackage = annotate $
                 statementOrInfix
                 ) <|> statement
 
+parameterList :: Parser [TypedIdentifier SourcePos]
+parameterList = option [] $
+    liftM2 (:) parameterList' (many $ comma *> parameterList')
+    where
+        parameterList' =
+            annotate $ TypedIdentifier <$> identifier <*> (tokStr ":" *> expression)
+
 {- Parse a statement. Many times this means also parsing an end
  - token, like in the case of function parsing. -}
 statement :: Parser (Statement SourcePos)
@@ -66,13 +73,22 @@ statement = try (do
     where
         statement' = function <|> statementExpr
 
+        parseRettype :: Parser (Maybe (Expression SourcePos))
+        parseRettype =
+            optionMaybe $ do
+                try (tokStr "->")
+                expression
+
         function = annotate $
             try (keyword "fn") *>
-                (Function <$> identifier <*>
-                    (tokStrs ["(", ")"] *> eos *> many statement <* eob))
+                (Function <$> identifier <*> (openParen *> parameterList <* closeParen) <*> (parseRettype <* eos) <*>
+                    (many statement <* eob))
 
         statementExpr = annotate $ StmtExpr <$> expression <* eos
 
+expressionList :: Parser [Expression SourcePos]
+expressionList = option [] $
+    liftM2 (:) expression (many $ comma *> expression)
 
 {- Parse an expression. This will use the state gathered from before
  - to make sure that the parsing is correct with the infix
@@ -88,7 +104,10 @@ expression = try (do
     where
         primaryExpression' :: Expression SourcePos -> Parser (Expression SourcePos)
         primaryExpression' lhs =
-            (try openParen *> closeParen *> primaryExpression' (Call lhs (annotation lhs)))
+            (try openParen *> do
+                args <- expressionList
+                closeParen
+                primaryExpression' (Call lhs args $ annotation lhs))
                 <|> return lhs
 
         primaryExpression = primaryExpression' =<< leafExpression
@@ -96,7 +115,8 @@ expression = try (do
         leafExpression =
             (openParen *> expression <* closeParen) <|>
             annotate (ExprIdentifier <$> identifier <|>
-                      ExprNumber <$> number)
+                      ExprNumber <$> number <|>
+                      ListLiteral <$> (openBracket *> expressionList <* closeBracket))
 
 
         compop :: String -> String -> Parser Bool

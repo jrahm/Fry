@@ -2,15 +2,18 @@ package main
 
 infixr >> 50 seq
 
-fn main()
+fn main(test: T -> G, testa: A -> B)
     println()
 
-    fn nother()
-        println()
+    fn nother(q: List)
+        println(4, 2 + 3 * 4)
         println()
         println()
     end
 
     (nother() >> nother()) >> nother() >> nother()
 
+end
+
+fn collatz(n: Int) -> Int
 end

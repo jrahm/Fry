@@ -18,6 +18,7 @@ data TokenType =
         | Operator
         | String
         | Number
+        | Bracket
 
         deriving (Show, Eq, Ord)
 
@@ -28,7 +29,7 @@ instance Pretty (Token st) where
 
 
 operatorChars :: Set Char
-operatorChars = fromList "~!@$%^&*/?+/=:'|.><"
+operatorChars = fromList "~!@$%^&*/?+/=:'|.><-"
 
 instance Functor Token where
     fmap f (Token x t s) = Token (f x) t s
@@ -60,9 +61,11 @@ mtoken = spaces2 *> mtoken' <* spaces2
             , (,) Operator <$> operator
             , (,) String <$> rstring
             , (,) Number <$> number
+            , (,) Bracket <$> bracket
             ]
 
         identifier = liftM2 (:) (satisfy isAlpha) (many (satisfy (\c -> isAlphaNum c || isDigit c || c == '_')))
+        bracket = return <$> oneOf "[]"
         paren = return <$> oneOf "()"
         comma = string ","
         operator = many1 $ satisfy (`member`operatorChars)
