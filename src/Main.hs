@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Main where
 
 import Debug.Trace
@@ -44,7 +45,6 @@ statementOrInfix =
         number <- readValue
         eos
         updateState (addOperator (Op op number assoc))
-        traceM ("Update the state! " ++ op)
         statementOrInfix
         ) <|> statement
 
@@ -57,9 +57,17 @@ expression = try (do
     expression' lhs op rhs) <|> primaryExpression
 
     where
-        primaryExpression =
+        primaryExpression' lhs =
+            (try openParen *> closeParen *> primaryExpression' (Call lhs))
+                <|> return lhs
+
+        primaryExpression = primaryExpression' =<< leafExpression
+
+        leafExpression =
             (openParen *> expression <* closeParen) <|>
-            ExprIdentifier <$> identifier
+            ExprIdentifier <$> identifier <|>
+            ExprNumber <$> number
+
 
         compop :: String -> String -> Parser Bool
         compop o1 o2 = do

@@ -5,5 +5,5 @@ infixl *> 10
 infixl <* 10
 
 fn main()
-    a *> b <* c
+    (a *> b)()
 end

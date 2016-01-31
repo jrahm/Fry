@@ -4,6 +4,7 @@ module Language.Fry.ParsecHelp where
 
 import Language.Fry.Tokenizer
 import Language.Fry.AST
+import Control.Arrow
 
 import Text.Parsec
 import Control.Monad
@@ -47,6 +48,13 @@ identifier :: (Stream s m (Token a), Show a) => ParsecT s u m String
 identifier = token_string <$> satisfyToken isIdentifier
     where isIdentifier (Token _ Identifier _) = True
           isIdentifier _ = False
+
+number :: (Stream s m (Token a), Show a) => ParsecT s u m Int
+number = do (Token _ _ str) <- satisfyToken (token_type >>> (==Number))
+            case readMay str of
+                Nothing -> parserFail "Expecting number"
+                Just x -> return x
+
 
 isEOS :: Token a -> Bool
 isEOS (Token _ EndOfStatement _) = True

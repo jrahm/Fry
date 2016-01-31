@@ -10,6 +10,8 @@ data Package =
 data Expression =
           ExprIdentifier {identifier_name :: String}
         | BinOp {binop_operator :: String, binop_lhs :: Expression, binop_rhs :: Expression}
+        | ExprNumber {expr_number :: Int}
+        | Call {call_expr :: Expression}
 
         deriving Show
 
@@ -21,7 +23,9 @@ data Statement =
 
 instance Pretty Expression where
     pretty (ExprIdentifier id) = id
-    pretty (BinOp op rhs lhs) = printf "(%s)%s(%s)" (pretty rhs) op (pretty lhs)
+    pretty (BinOp op rhs lhs) = printf "(%s) %s (%s)" (pretty rhs) op (pretty lhs)
+    pretty (ExprNumber num) = show num
+    pretty (Call expr) = printf "(%s)()" (pretty expr)
 
 instance Pretty Statement where
     pretty (Function name body) = "fn " ++ name ++ "()\n\n"
