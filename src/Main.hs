@@ -26,7 +26,7 @@ main = (>>=) getArgs $ \argv -> do
     case ps of
         Left err -> print err
         Right tokens -> do
-            mapM_ prettyPrint tokens
+            mapM_ print tokens
             let ps' = runParser parsePackage (FryParseState operators) (head argv) tokens
             case ps' of
                 Left err -> print err

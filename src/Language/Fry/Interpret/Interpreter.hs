@@ -14,30 +14,30 @@ data FryState = FryState (Map String Value)
 singletonMap :: Map String Value
 singletonMap = M.fromList [("println", Func (\_ _ -> putStrLn "!!println!!"))]
 
-interpret :: Package -> IO ()
-interpret (Package _ stmts) = do
+interpret :: (Show a) => Package a -> IO ()
+interpret (Package _ stmts a) = do
     st <- foldM interpretStatement (FryState singletonMap) stmts
-    void $ interpretExpr st (Call (ExprIdentifier "main"))
+    void $ interpretExpr st (Call (ExprIdentifier "main" a) a)
 
     where
-        interpretStatement :: FryState -> Statement -> IO FryState
+        interpretStatement :: (Show a) => FryState -> Statement a -> IO FryState
         interpretStatement state@(FryState mp) stmt = case stmt of
-            (Function name body) ->
+            (Function name body _) ->
                 return $ FryState $
                     M.insert name (Func $ \_ st -> foldM_ interpretStatement st body) mp
-            (StmtExpr expr) -> interpretExpr state expr
+            (StmtExpr expr _) -> interpretExpr state expr
 
-        interpretExpr :: FryState -> Expression -> IO FryState
+        interpretExpr :: (Show a) => FryState -> Expression a -> IO FryState
         interpretExpr state@(FryState mp) expr =
             case expr of
-                (ExprIdentifier _) -> return state
-                (ExprNumber _) -> return state
-                (BinOp ">>" lhs rhs) -> do
+                (ExprIdentifier _ _) -> return state
+                (ExprNumber _ _) -> return state
+                (BinOp ">>" lhs rhs _) -> do
                     state' <- interpretExpr state lhs
                     interpretExpr state' rhs
-                (Call (ExprIdentifier x)) ->
+                (Call (ExprIdentifier x annot) _) ->
                     case M.lookup x mp of
-                        Nothing -> error (x ++ ": no such function")
+                        Nothing -> error (show annot ++ ": " ++ x ++ ": no such function")
                         Just v -> case v of
                                     Func fn -> fn [] state >> return state
                 _ -> undefined

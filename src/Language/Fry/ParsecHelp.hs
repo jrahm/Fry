@@ -21,6 +21,18 @@ takeUntil fn = many (satisfyToken (not . fn))
 takeUntil1 :: (Stream s m (Token a), Show a) => (Token a -> Bool) -> ParsecT s u m [Token a]
 takeUntil1 fn = many1 (satisfyToken (not . fn))
 
+getAnnot :: (Stream s m (Token a), Show a) => ParsecT s u m a
+getAnnot = do
+    (Token pos _ _) <- lookAhead anyToken
+    return pos
+
+annotate :: (Stream s m (Token sr), Show sr) =>
+                ParsecT s u m (sr -> a) -> ParsecT s u m a
+annotate sec = do
+    annot <- getAnnot
+    sec <*> pure annot
+
+
 satisfyToken :: (Stream s m (Token a), Show a) => (Token a -> Bool) -> ParsecT s u m (Token a)
 satisfyToken fn = try $ do
     tok <- anyToken
@@ -90,3 +102,4 @@ readValue = do
 maybeFail :: String -> Maybe a -> ParsecT s u m a
 maybeFail str Nothing = parserFail str
 maybeFail _ (Just x) = return x
+

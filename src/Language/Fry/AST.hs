@@ -3,37 +3,49 @@ module Language.Fry.AST where
 import Language.Fry.Pretty
 import Text.Printf
 
-data Package =
-        Package {package_name :: String, package_statements :: [Statement]}
+data Package annot =
+        Package {package_name :: String, package_statements :: [Statement annot], package_annotation :: annot}
         deriving Show
 
-data Expression =
-          ExprIdentifier {identifier_name :: String}
-        | BinOp {binop_operator :: String, binop_lhs :: Expression, binop_rhs :: Expression}
-        | ExprNumber {expr_number :: Int}
-        | Call {call_expr :: Expression}
+data Expression annot =
+          ExprIdentifier {identifier_name :: String, expr_annotation :: annot}
+        | BinOp {binop_operator :: String, binop_lhs :: Expression annot, binop_rhs :: Expression annot, expr_annotation :: annot}
+        | ExprNumber {expr_number :: Int, expr_annotation :: annot}
+        | Call {call_expr :: Expression annot, expr_annotation :: annot}
 
         deriving Show
 
-data Statement =
-         Function {function_name :: String, function_body :: [Statement]}
-       | StmtExpr {stmtexpr_expression :: Expression}
+data Statement annot =
+         Function {function_name :: String, function_body :: [Statement annot], statement_annotation :: annot}
+       | StmtExpr {stmtexpr_expression :: Expression annot, statement_annotation :: annot}
 
        deriving Show
 
-instance Pretty Expression where
-    pretty (ExprIdentifier id) = id
-    pretty (BinOp op rhs lhs) = printf "(%s) %s (%s)" (pretty rhs) op (pretty lhs)
-    pretty (ExprNumber num) = show num
-    pretty (Call expr) = printf "(%s)()" (pretty expr)
+class Annotated a where
+    annotation :: a e -> e
 
-instance Pretty Statement where
-    pretty (Function name body) = "fn " ++ name ++ "()\n\n"
+instance Annotated Statement where
+    annotation = statement_annotation
+
+instance Annotated Expression where
+    annotation = expr_annotation
+
+instance Annotated Package where
+    annotation = package_annotation
+
+instance Pretty (Expression annot) where
+    pretty (ExprIdentifier id _) = id
+    pretty (BinOp op rhs lhs _) = printf "(%s) %s (%s)" (pretty rhs) op (pretty lhs)
+    pretty (ExprNumber num _) = show num
+    pretty (Call expr _) = printf "(%s)()" (pretty expr)
+
+instance Pretty (Statement a) where
+    pretty (Function name body _) = "fn " ++ name ++ "()\n\n"
         ++ indent (concatMap pretty body) ++ "\nend\n"
-    pretty (StmtExpr expr) = pretty expr ++ "\n"
+    pretty (StmtExpr expr _) = pretty expr ++ "\n"
 
-instance Pretty Package where
-    pretty (Package name stmts) = "package " ++ name ++ "\n\n"
+instance Pretty (Package a) where
+    pretty (Package name stmts _) = "package " ++ name ++ "\n\n"
         ++ indent (concatMap pretty stmts)
 
 indent :: String -> String

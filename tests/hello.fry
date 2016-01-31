@@ -11,6 +11,6 @@ fn main()
         println()
     end
 
-    nother() >> nother() >> nother() >> nother()
+    (nother() >> nother()) >> nother() >> nother()
 
 end

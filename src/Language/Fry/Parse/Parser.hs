@@ -9,7 +9,6 @@ import Language.Fry.Tokenizer
 import Language.Fry.AST
 import Language.Fry.ParsecHelp
 import Language.Fry.Pretty
-import Language.Fry.Interpret.Interpreter
 
 import Text.Parsec
 
@@ -37,14 +36,15 @@ operators = M.fromList $ map (\o@(Op {op_symbol = s}) -> (s, o)) [
             ]
 {- Function that parses a package. It parses statements or
  - the infix macros. -}
-parsePackage :: Parser Package
-parsePackage = Package <$>
+parsePackage :: Parser (Package SourcePos)
+parsePackage = annotate $
+    Package <$>
     (keyword "package" *> identifier <* eos) <*>
      many statementOrInfix <* eof
 
      where
 
-        statementOrInfix :: Parser Statement
+        statementOrInfix :: Parser (Statement SourcePos)
         statementOrInfix =
             (do
                 assoc <- try (keyword "infixl" $> LA) <|> try (keyword "infixr" $> RA)
@@ -58,7 +58,7 @@ parsePackage = Package <$>
 
 {- Parse a statement. Many times this means also parsing an end
  - token, like in the case of function parsing. -}
-statement :: Parser Statement
+statement :: Parser (Statement SourcePos)
 statement = try (do
         (Token _ _ s) <- lookAhead anyToken
         when (s == "end") $ parserFail ""
@@ -66,16 +66,18 @@ statement = try (do
     where
         statement' = function <|> statementExpr
 
-        function = try (keyword "fn") *>
-            (Function <$> identifier <*>
-                (tokStrs ["(", ")"] *> eos *> many statement <* eob))
+        function = annotate $
+            try (keyword "fn") *>
+                (Function <$> identifier <*>
+                    (tokStrs ["(", ")"] *> eos *> many statement <* eob))
 
-        statementExpr = StmtExpr <$> expression <* eos
+        statementExpr = annotate $ StmtExpr <$> expression <* eos
+
 
 {- Parse an expression. This will use the state gathered from before
  - to make sure that the parsing is correct with the infix
  - macros defined before. -}
-expression :: Parser Expression
+expression :: Parser (Expression SourcePos)
 expression = try (do
     lhs <- primaryExpression
     op <- operator
@@ -84,16 +86,17 @@ expression = try (do
     expression' lhs op rhs) <|> primaryExpression
 
     where
+        primaryExpression' :: Expression SourcePos -> Parser (Expression SourcePos)
         primaryExpression' lhs =
-            (try openParen *> closeParen *> primaryExpression' (Call lhs))
+            (try openParen *> closeParen *> primaryExpression' (Call lhs (annotation lhs)))
                 <|> return lhs
 
         primaryExpression = primaryExpression' =<< leafExpression
 
         leafExpression =
             (openParen *> expression <* closeParen) <|>
-            ExprIdentifier <$> identifier <|>
-            ExprNumber <$> number
+            annotate (ExprIdentifier <$> identifier <|>
+                      ExprNumber <$> number)
 
 
         compop :: String -> String -> Parser Bool
@@ -110,12 +113,12 @@ expression = try (do
                                     LA -> return True
                                     RA -> return False
 
-        expression' :: Expression -> String -> Expression -> Parser Expression
+        expression' :: Expression SourcePos -> String -> Expression SourcePos -> Parser (Expression SourcePos)
         expression' lhs op rhs = (do
                 op2 <- operator
                 b <- compop op op2
                 if b then
-                    expression' (BinOp op lhs rhs) op2 =<< primaryExpression
+                    expression' (BinOp op lhs rhs $ annotation lhs) op2 =<< primaryExpression
                     else
-                    BinOp op lhs <$> (expression' rhs op2 =<< primaryExpression)) <|>
-                return (BinOp op lhs rhs)
+                    annotate (BinOp op lhs <$> (expression' rhs op2 =<< primaryExpression))) <|>
+                return (BinOp op lhs rhs $ annotation lhs)
