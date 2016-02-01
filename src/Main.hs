@@ -28,7 +28,7 @@ main = (>>=) getArgs $ \argv -> do
         Left err -> print err
         Right tokens -> do
             mapM_ print tokens
-            let ps' = runParser parsePackage (FryParseState operators) (head argv) tokens
+            let ps' = join (runPT parsePackage (FryParseState operators) (head argv) tokens)
             case ps' of
                 Left err -> print err
                 Right ast@(Package _ stmts _) -> do

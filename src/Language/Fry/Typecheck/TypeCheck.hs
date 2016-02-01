@@ -52,7 +52,7 @@ instance Monoid (TypeCheckState annot) where
  - functions. This wil help with type-checking mutually recursive
  - functions of the sorts. -}
 
-collectConstantTypes :: [Statement annot] -> TypeCheckState annot
+collectConstantTypes :: (Show annot) => [Statement annot] -> TypeCheckState annot
 collectConstantTypes statements =
     (mconcat . flip map statements) $ \stmt ->
         case stmt of
@@ -67,14 +67,15 @@ collectConstantTypes statements =
                     Map.singleton name fntypeexpr
 
     where
-        toArrowFn :: [Expression annot] -> Set String -> DataType
+        toArrowFn :: (Show annot) => [Expression annot] -> Set String -> DataType
         toArrowFn [expr] str = toArrowFn' [ExprIdentifier "Unit" $ annotation expr, expr] str
         toArrowFn xs str = toArrowFn' xs str
 
-        toArrowFn' :: [Expression annot] -> Set String -> DataType
+        toArrowFn' :: (Show annot) => [Expression annot] -> Set String -> DataType
         toArrowFn' [expr] str = toDataType str expr
         toArrowFn' (a:as) str = DataType "Arrow" [toDataType str a, toArrowFn' as str]
 
+        toDataType :: (Show annot) => Set String -> Expression annot -> DataType
         toDataType str expr = case expr of
             (ExprIdentifier id' _) ->
                 if id' `Set.member` str then
@@ -88,4 +89,4 @@ collectConstantTypes statements =
                     else
                         DataType id' (map (toDataType str) args)
 
-            t -> error ("Unallowed expression in type construct: " ++ pretty t)
+            t -> error (show (annotation t) ++ ": Unallowed expression in type construct: " ++ pretty t)

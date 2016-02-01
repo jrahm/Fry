@@ -124,4 +124,3 @@ stringLiteral = do
     where
         isString (Token _ String _) = True
         isString _ = False
-

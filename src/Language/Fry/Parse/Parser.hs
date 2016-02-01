@@ -1,9 +1,12 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Language.Fry.Parse.Parser where
 
+import Debug.Trace
 import Data.Map (Map)
 import qualified Data.Map as M
+
 import Control.Monad
+import Control.Monad.Trans
 
 import Language.Fry.Tokenizer
 import Language.Fry.AST
@@ -11,10 +14,11 @@ import Language.Fry.ParsecHelp
 import Language.Fry.Pretty
 
 import Text.Parsec
+import Text.Parsec.Error
 
 {- The Fry Parser type. This works on tokens rather than
  - straight text. -}
-type Parser = Parsec [Token SourcePos] FryParseState
+type Parser = ParsecT [Token SourcePos] FryParseState (Either ParseError)
 
 {- The parsing state. This is used when certain statements
  - affect the parsing of the AST. For example, the infix
@@ -28,7 +32,7 @@ addOperator op fs = fs {operator_map = M.insert (op_symbol op) op (operator_map 
 
 {- List of default operators that are allowed. -}
 operators :: Map String Op
-operators = M.fromList $ map (\o@(Op {op_symbol = s}) -> (s, o)) [
+operators = M.fromList $ map (\o@Op {op_symbol = s} -> (s, o)) [
                 Op "=" 0 RA "set",
                 Op "|" 5 LA "or", Op "&" 5 LA "and",
                 Op "+" 10 LA "add", Op "-" 10 LA "subtract",
@@ -120,7 +124,7 @@ expressionList = option [] $
 expression :: Parser (Expression SourcePos)
 expression = stmtexpr <|> try (do
     lhs <- primaryExpression
-    op <- operator
+    op <- getOp =<< operator
     rhs <- primaryExpression
 
     expression' lhs op rhs) <|> primaryExpression
@@ -146,26 +150,42 @@ expression = stmtexpr <|> try (do
                       ListLiteral <$> (openBracket *> expressionList <* closeBracket))
 
 
-        compop :: String -> String -> Parser Bool
-        compop o1 o2 = do
-                    FryParseState {operator_map = ops} <- getState
+        getOp :: String -> Parser Op
+        getOp s = do
+            FryParseState {operator_map = ops} <- getState
 
-                    op1@(Op _ prec1 _ _) <- maybeFail ("Unknown operator: " ++ o1) $ M.lookup o1 ops
-                    op2@(Op _ prec2 assoc _) <- maybeFail ("Unknown operator: " ++ o2) $ M.lookup o2 ops
+            let
+                maybeFail' str Nothing = do
+                    errmsg <- newErrorMessage <$> pure (Message str) <*> getAnnot
+                    traceM "Errors!!!!!"
+                    lift (Left errmsg :: Either ParseError ())
+                    parserFail str
 
+                maybeFail' str (Just j) = return j
+
+            maybeFail' ("Unknown operator: " ++ s) $ M.lookup s  ops
+
+        compop (Op _ prec1 assoc _) (Op _ prec2 _ _) =
                     case prec1 `compare` prec2 of
-                            GT -> return True
-                            LT -> return False
+                            GT -> True
+                            LT -> False
                             EQ -> case assoc of
-                                    LA -> return True
-                                    RA -> return False
+                                    LA -> True
+                                    RA -> False
 
-        expression' :: Expression SourcePos -> String -> Expression SourcePos -> Parser (Expression SourcePos)
-        expression' lhs op rhs = (do
-                op2 <- operator
-                b <- compop op op2
-                if b then
-                    expression' (BinOp op lhs rhs $ annotation lhs) op2 =<< primaryExpression
+        operatorToCall :: Expression a -> Expression a -> Op -> Expression a
+        operatorToCall lhs rhs (Op _ _ _ alias) =
+            let annot = annotation lhs in
+            Call (ExprIdentifier alias annot)
+                [lhs, rhs] annot
+
+        expression' :: Expression SourcePos -> Op -> Expression SourcePos -> Parser (Expression SourcePos)
+        expression' lhs op1 rhs = (do
+                op' <- operator
+                op2 <- getOp op'
+                if compop op1 op2 then
+                    expression' (operatorToCall lhs rhs op1) op2 =<< primaryExpression
                     else
-                    annotate (BinOp op lhs <$> (expression' rhs op2 =<< primaryExpression))) <|>
-                return (BinOp op lhs rhs $ annotation lhs)
+                        operatorToCall lhs <$>
+                            (expression' rhs op2 =<< primaryExpression) <*> pure op1
+                ) <|> return (operatorToCall lhs rhs op1)
