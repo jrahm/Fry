@@ -61,7 +61,7 @@ parameterList = option [] $
     liftM2 (:) parameterList' (many $ comma *> parameterList')
     where
         parameterList' =
-            annotate $ TypedIdentifier <$> identifier <*> (tokStr ":" *> expression)
+            annotate $ TypedIdentifier <$> identifier <*> (tokStr ":" *> expression <* many eos)
 
 {- Parse a statement. Many times this means also parsing an end
  - token, like in the case of function parsing. -}
@@ -71,7 +71,15 @@ statement = try (do
         when (s == "end" || s == "else") $ parserFail ""
     ) *> statement'
     where
-        statement' = function <|> ifstmt <|> statementExpr
+        statement' = structure <|> function <|> ifstmt <|> statementExpr
+
+        idlist :: Parser [String]
+        idlist = liftM2 (:) identifier (many $ comma *> identifier)
+
+        structure :: Parser (Statement SourcePos)
+        structure = annotate $
+            try (keyword "struct") *>
+                (Structure <$> identifier <*> option [] (openParen *> idlist <* closeParen) <*> (eos *> parameterList)) <* eob
 
         parseRettype :: Parser (Maybe (Expression SourcePos))
         parseRettype =
@@ -79,9 +87,16 @@ statement = try (do
                 try (tokStr "->")
                 expression
 
+        functionContext :: Parser [TypedIdentifier SourcePos]
+        functionContext =
+            option [] $
+            openBracket *> parameterList <* closeBracket
+
         function = annotate $
             try (keyword "fn") *>
-                (Function <$> identifier <*> (openParen *> parameterList <* closeParen) <*> (parseRettype <* eos) <*>
+                (Function <$>
+                    functionContext <*>
+                    identifier <*> (openParen *> parameterList <* closeParen) <*> (parseRettype <* eos) <*>
                     (many statement <* eob))
 
         ifstmt = annotate $

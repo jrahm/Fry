@@ -1,6 +1,32 @@
 package main
 
 infixr >> 50 seq
+infixl << 50 seq
+infixr -> 10 Arrow
+infixl <- 10 Rev
+
+fn Vec(x: Int, a: Type) -> Type
+    if x == 1
+        a
+    else
+        Pair(a, Vec(x - 1, a))
+    end
+end
+
+struct Person
+      age: Int
+    , hairColor: String
+end
+
+fn main(argv: List(String))
+
+end
+
+fn [M: Monad, A: Any, B: Any] \
+    bind(a:   M(A), \
+         fun: M(A) -> (A -> M(B)) -> M(B))
+end
+
 
 fn main(test: T -> G, \
         testa: A -> B)
@@ -15,7 +41,7 @@ fn main(test: T -> G, \
 
     nother() >> nother() << nother()
 
-    [ fn _(n: A)
+    [ fn _(n: A) -> Q
         println(n)
       end ]
 

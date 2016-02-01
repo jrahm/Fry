@@ -20,7 +20,8 @@ data Expression annot =
         deriving Show
 
 data Statement annot =
-         Function {function_name :: String,
+         Function {function_context :: [TypedIdentifier annot],
+                   function_name :: String,
                    function_params :: [TypedIdentifier annot],
                    function_rettype :: Maybe (Expression annot),
                    function_body :: [Statement annot],
@@ -30,6 +31,12 @@ data Statement annot =
                  if_body :: [Statement annot],
                  if_else :: [Statement annot],
                  statement_annotation :: annot}
+
+       | Structure {structure_name :: String,
+                    structure_typevars :: [String],
+                    structure_fields :: [TypedIdentifier annot],
+                    statement_annotation :: annot
+                    }
 
        | StmtExpr {stmtexpr_expression :: Expression annot, statement_annotation :: annot}
 
@@ -67,13 +74,20 @@ instance Pretty (TypedIdentifier annot) where
     pretty (TypedIdentifier name typ _) = name ++ ": " ++ pretty typ
 
 instance Pretty (Statement a) where
-    pretty (Function name params rettyp body _) = "fn " ++ name ++ "(" ++ intercalate "," (map pretty params) ++ ")" ++
-            maybe "" (\expr -> " -> " ++ pretty expr) rettyp
-            ++ "\n\n"
+    pretty (Function ctx name params rettyp body _) =
+            printf "fn %s%s(%s)%s\n\n"
+                (if not (null ctx) then "[" ++ intercalate "," (map pretty ctx) ++ "] " else "")
+                name (intercalate "," $ map pretty params)
+                (maybe "" (\expr -> " -> " ++ pretty expr) rettyp)
         ++ indent (concatMap pretty body) ++ "\nend\n"
 
+    pretty (Structure name vars fields _) =
+        printf "struct %s%s\n%s\nend\n"
+            name (if not (null vars) then "(" ++ intercalate "," vars ++ ")" else "")
+            (indent $ intercalate ",\n" (map pretty fields))
+
     pretty (IfStmt expr body elsebody _) =
-        printf "if %s\n%s\n%s\nend"
+        printf "if %s\n%s\n%s\nend\n"
             (pretty expr) (indent $ concatMap pretty body)
             (if not (null elsebody) then
                 printf "else\n%s" (indent $ concatMap pretty elsebody) else "")

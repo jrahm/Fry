@@ -22,7 +22,7 @@ interpret (Package _ stmts a) = do
     where
         interpretStatement :: (Show a) => FryState -> Statement a -> IO FryState
         interpretStatement state@(FryState mp) stmt = case stmt of
-            (Function name _ _ body _) ->
+            (Function _ name _ _ body _) ->
                 return $ FryState $
                     M.insert name (Func $ \_ st -> foldM_ interpretStatement st body) mp
             (StmtExpr expr _) -> interpretExpr state expr
