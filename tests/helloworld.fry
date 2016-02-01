@@ -1,5 +1,10 @@
 package main
 
-fn main(argv: List(String))
-    println("Hello, World!") ; println("There it is")
+fn something(func: String -> Unit) -> Unit
+    func("does this work?")
+end
+
+fn main(argv: List(String)) -> Unit
+    println(println("Hello, World!")) ; println("There it is")
+    something(println)
 end

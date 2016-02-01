@@ -8,26 +8,28 @@ import qualified Data.Map as M
 import Data.List
 
 data Value =
-        Func ([Value] -> FryState -> IO ()) |
+        Func ([Value] -> FryState -> IO Value) |
         LiteralString String |
         List [Value]  |
-        Integer Int
+        Integer Int   |
+        Unit
 
 instance Show Value where
     show (Func _) = "fn"
     show (LiteralString str) = str
     show (List vals) = "[" ++ show vals ++ "]"
     show (Integer i) = show i
+    show Unit = "unit"
 
 data FryState = FryState (Map String Value)
 
 singletonMap :: Map String Value
-singletonMap = M.fromList [("println", Func (\vals _ -> putStrLn $ unwords $ map show vals))]
+singletonMap = M.fromList [("println", Func (\vals _ -> (putStrLn $ unwords $ map show vals) >> return Unit))]
 
 interpret :: (Show a) => Package a -> IO ()
 interpret (Package _ stmts a) = do
     st <- foldM interpretStatement (FryState singletonMap) stmts
-    void $ interpretExpr st (Call (ExprIdentifier "main" a) [] a)
+    void $ evalExpr st (Call (ExprIdentifier "main" a) [] a)
 
     where
         interpretStatement :: (Show a) => FryState -> Statement a -> IO FryState
@@ -38,32 +40,29 @@ interpret (Package _ stmts a) = do
                             let st' = foldl (\(FryState mp) (n, v) -> FryState $ M.insert n v mp) st $
                                         zipWith (\(TypedIdentifier n _ _) v -> (n, v)) idents vals
                                         in
-                            foldM_ interpretStatement st' body
+                            foldM_ interpretStatement st' body >>
+                            return Unit
                         ) mp
 
-            (StmtExpr expr _) -> interpretExpr state expr
+            (StmtExpr expr _) -> evalExpr state expr >> return state
 
-        evalExpr :: Expression a -> Value
-        evalExpr e = case e of
-            StringLiteral str _ -> LiteralString str
+        evalExpr :: (Show a) => FryState -> Expression a -> IO Value
+        evalExpr state@(FryState mp) e = case e of
+            StringLiteral str _ -> return $ LiteralString str
+
+            ExprIdentifier id' _ ->
+                case M.lookup id' mp of
+                    Nothing -> error ("Undefined variable: " ++ id')
+                    Just x -> return x
+
+            (Call (ExprIdentifier x annot) args _) ->
+                case M.lookup x mp of
+                    Nothing -> error (show annot ++ ": " ++ x ++ ": no such function")
+                    Just v -> case v of
+                                Func fn -> do
+                                    args' <- mapM (evalExpr state) args
+                                    fn args' state
+                                _ -> error(show annot ++ ": " ++ x ++ ": is not a function!")
+
             _ -> undefined
-
-        interpretExpr :: (Show a) => FryState -> Expression a -> IO FryState
-        interpretExpr state@(FryState mp) expr =
-            case expr of
-                (ExprIdentifier _ _) -> return state
-
-                (ExprNumber _ _) -> return state
-
-                (BinOp ">>" lhs rhs _) -> do
-                    state' <- interpretExpr state lhs
-                    interpretExpr state' rhs
-
-                (Call (ExprIdentifier x annot) args _) ->
-                    case M.lookup x mp of
-                        Nothing -> error (show annot ++ ": " ++ x ++ ": no such function")
-                        Just v -> case v of
-                                    Func fn -> fn (map evalExpr args) state >> return state
-                                    _ -> error(show annot ++ ": " ++ x ++ ": is not a function!")
-                _ -> undefined
 

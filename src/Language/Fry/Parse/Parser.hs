@@ -32,7 +32,9 @@ operators = M.fromList $ map (\o@(Op {op_symbol = s}) -> (s, o)) [
                 Op "=" 0 RA "set",
                 Op "|" 5 LA "or", Op "&" 5 LA "and",
                 Op "+" 10 LA "add", Op "-" 10 LA "subtract",
-                Op "*" 20 LA "multiply", Op "/" 20 LA "divide", Op "%" 20 LA "modulo"
+                Op "*" 20 LA "multiply", Op "/" 20 LA "divide", Op "%" 20 LA "modulo",
+                Op "->" 30 RA "Arrow",
+                Op "." 1000 LA "get"
             ]
 {- Function that parses a package. It parses statements or
  - the infix macros. -}
