@@ -2,7 +2,9 @@ package main
 
 infixr >> 50 seq
 
-fn main(test: T -> G, testa: A -> B)
+fn main(test: T -> G, \
+        testa: A -> B)
+
     println()
 
     fn nother(q: List)
@@ -11,7 +13,11 @@ fn main(test: T -> G, testa: A -> B)
         println()
     end
 
-    (nother() >> nother()) >> nother() >> nother()
+    nother() >> nother() << nother()
+
+    [ fn _(n: A)
+        println(n)
+      end ]
 
 end
 
@@ -19,7 +25,7 @@ fn collatz(n: Int) -> Int
     if n == 1
         0
     else
-        if n % 2 = 0
+        if n % 2 = 0 ;
             collatz(n / 2)
         else
             collatz(1 + n * 3)

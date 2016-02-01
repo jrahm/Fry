@@ -55,7 +55,7 @@ mtoken = spaces2 *> mtoken' <* spaces2
 
         mtoken'' = choice [
               (,) Identifier <$> identifier
-            , (,) EndOfStatement <$> many1 newline
+            , (,) EndOfStatement <$> many1 (newline <|> char ';')
             , (,) Paren <$> paren
             , (,) Comma <$> comma
             , (,) Operator <$> operator
@@ -64,7 +64,7 @@ mtoken = spaces2 *> mtoken' <* spaces2
             , (,) Bracket <$> bracket
             ]
 
-        identifier = liftM2 (:) (satisfy isAlpha) (many (satisfy (\c -> isAlphaNum c || isDigit c || c == '_')))
+        identifier = liftM2 (:) (satisfy $ \c -> isAlpha c || c == '_') (many (satisfy (\c -> isAlphaNum c || isDigit c || c == '_')))
         bracket = return <$> oneOf "[]"
         paren = return <$> oneOf "()"
         comma = string ","

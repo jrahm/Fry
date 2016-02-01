@@ -92,6 +92,7 @@ statement = try (do
 
         statementExpr = annotate $ StmtExpr <$> expression <* eos
 
+
 expressionList :: Parser [Expression SourcePos]
 expressionList = option [] $
     liftM2 (:) expression (many $ comma *> expression)
@@ -100,7 +101,7 @@ expressionList = option [] $
  - to make sure that the parsing is correct with the infix
  - macros defined before. -}
 expression :: Parser (Expression SourcePos)
-expression = try (do
+expression = stmtexpr <|> try (do
     lhs <- primaryExpression
     op <- operator
     rhs <- primaryExpression
@@ -108,6 +109,8 @@ expression = try (do
     expression' lhs op rhs) <|> primaryExpression
 
     where
+        stmtexpr = lookAhead (keyword "fn") *> annotate (ExprStmt <$> statement)
+
         primaryExpression' :: Expression SourcePos -> Parser (Expression SourcePos)
         primaryExpression' lhs =
             (try openParen *> do

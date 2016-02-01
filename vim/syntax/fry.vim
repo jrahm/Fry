@@ -29,7 +29,7 @@ syn match fryNumber +\(0x[0-9]\+\|[0-9]\+\)\(L\|l\)\?+
 syn match fryLambdaFn +lam\s\+\(\w\+\(\s\+\w\+\)*\s*\)\?\.+ contains=fryLambdaDelim
 syn match fryLambdaDelim +[.()]\|lam+ contained
 
-syn match fryOperator +[+\-><~!#$%=|*&@]+
+syn match fryOperator +[+\\/\-><~!#$%=|*&@]+
 
 syn keyword fryImport import as contained
 syn match fryImportPathSep +::+ contained
