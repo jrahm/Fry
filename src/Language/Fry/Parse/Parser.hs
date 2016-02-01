@@ -140,6 +140,7 @@ expression = stmtexpr <|> try (do
             (openParen *> expression <* closeParen) <|>
             annotate (ExprIdentifier <$> identifier <|>
                       ExprNumber <$> number <|>
+                      StringLiteral <$> stringLiteral <|>
                       ListLiteral <$> (openBracket *> expressionList <* closeBracket))
 
 

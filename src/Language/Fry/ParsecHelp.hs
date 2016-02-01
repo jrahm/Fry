@@ -117,3 +117,11 @@ maybeFail :: String -> Maybe a -> ParsecT s u m a
 maybeFail str Nothing = parserFail str
 maybeFail _ (Just x) = return x
 
+stringLiteral :: (Stream s m (Token a), Show a) => ParsecT s u m String
+stringLiteral = do
+    (Token _ _ str) <- satisfyToken isString
+    return str
+    where
+        isString (Token _ String _) = True
+        isString _ = False
+

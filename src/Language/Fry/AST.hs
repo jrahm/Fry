@@ -16,6 +16,7 @@ data Expression annot =
         | Call {call_expr :: Expression annot, call_args :: [Expression annot], expr_annotation :: annot}
         | ListLiteral {list_exprs :: [Expression annot], expr_annotation :: annot}
         | ExprStmt {expr_stmt :: Statement annot, expr_annotation :: annot}
+        | StringLiteral {string_literal :: String, expr_annotation :: annot}
 
         deriving Show
 
@@ -69,6 +70,7 @@ instance Pretty (Expression annot) where
     pretty (Call expr args _) = printf "(%s)(%s)" (pretty expr) (intercalate ", " $ map pretty args)
     pretty (ListLiteral lst _) = printf "[%s]" (intercalate ", " $ map pretty lst)
     pretty (ExprStmt stmt _) = printf "%s" (pretty stmt)
+    pretty (StringLiteral str _) = show str
 
 instance Pretty (TypedIdentifier annot) where
     pretty (TypedIdentifier name typ _) = name ++ ": " ++ pretty typ
