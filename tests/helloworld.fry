@@ -1,5 +1,5 @@
 package main
 
 fn main(argv: List(String))
-    println("Hello, World!")
+    println("Hello, World!") ; println("There it is")
 end
