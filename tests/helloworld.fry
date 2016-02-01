@@ -1,0 +1,5 @@
+package main
+
+fn main(argv: List(String))
+    println("Hello, World!")
+end

@@ -25,6 +25,7 @@ end
 fn [M: Monad, A: Any, B: Any] \
     bind(a:   M(A), \
          fun: M(A) -> (A -> M(B)) -> M(B))
+
 end
 
 
