@@ -19,6 +19,7 @@ import qualified Data.Map as M
 
 import Text.Parsec
 import Language.Fry.Parse.Parser
+import Language.Fry.Typecheck.TypeCheck
 
 main :: IO ()
 main = (>>=) getArgs $ \argv -> do
@@ -30,6 +31,7 @@ main = (>>=) getArgs $ \argv -> do
             let ps' = runParser parsePackage (FryParseState operators) (head argv) tokens
             case ps' of
                 Left err -> print err
-                Right ast -> do
+                Right ast@(Package _ stmts _) -> do
                     prettyPrint ast
+                    prettyPrint $ collectConstantTypes stmts
                     interpret ast
