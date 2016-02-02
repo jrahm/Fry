@@ -1,24 +1,15 @@
 package main
 
-struct String
+infixl -> 10 Arrow
+
+struct Map(k, v)
 end
 
-struct List(T)
-end
-
-struct Int
-end
-
-struct Unit
-end
-
-fn [A: Any] singleton(x: A) -> List(A)
+fn map(l: List(a), f: a -> b) -> List(b)
 end
 
 fn println(arg: String) -> Unit
-    main(singleton(arg))
 end
 
-fn main(argv: List(String)) -> Int
-    println("Hello, World!")
+fn main(argv: List(String)) -> Unit
 end

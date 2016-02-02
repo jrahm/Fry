@@ -12,6 +12,8 @@ import Language.Fry.Typecheck.Util
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
+import Data.Char
+
 
 alter :: [a] -> [a] -> [a]
 alter [] l2 = l2
@@ -151,7 +153,7 @@ collectConstantTypes state statements =
 toDataType :: (Show annot) => TypeCheckState annot -> Set String -> Expression annot -> Either (String, annot) DataType
 toDataType state str expr = case expr of
     (ExprIdentifier id' annot) ->
-        if id' `Set.member` str then
+        if id' `Set.member` str || isLower (head id') then
             return $ TypeVar id' []
             else do
                 {- This guy had better have Kind=0, otherwise it shouldn't be

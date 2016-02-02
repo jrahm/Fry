@@ -21,6 +21,7 @@ import qualified Data.Map as M
 import Text.Parsec
 import Language.Fry.Parse.Parser
 import Language.Fry.Typecheck.TypeCheck
+import Language.Fry.Typecheck.Builtins
 
 main :: IO ()
 main = (>>=) getArgs $ \argv -> do
@@ -34,6 +35,6 @@ main = (>>=) getArgs $ \argv -> do
                 Left err -> print err
                 Right ast@(Package _ stmts _) -> do
                     prettyPrint ast
-                    forM_ (typecheck mempty stmts) $ \(err, pos) ->
+                    forM_ (typecheck initialState stmts) $ \(err, pos) ->
                         printf "%s: %s\n" (show pos) err
                     interpret ast
