@@ -93,10 +93,12 @@ statement = try (do
                 try (tokStr "->")
                 expression
 
-        functionContext :: Parser [TypedIdentifier SourcePos]
+        functionContext :: Parser [Expression SourcePos]
         functionContext =
             option [] $
-            openBracket *> parameterList <* closeBracket
+                openBracket *>
+                   liftM2 (:) expression (many $ comma *> expression)
+                <* closeBracket
 
         function = annotate $
             try (keyword "fn") *>

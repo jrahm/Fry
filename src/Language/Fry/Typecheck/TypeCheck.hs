@@ -126,8 +126,6 @@ collectConstantTypes state statements =
     flip mconcatMapM statements $ \stmt ->
         case stmt of
             Function ctx name params ret _ annot -> do
-                {- The type variables for this function. -}
-                let typevars = Set.fromList $ map typedid_name ctx
                 {- The types of all the parameters of a function -}
                 let paramtypes = map typedid_type params
                 {- The return type, changed to contain unit if not defined.  -}
@@ -135,7 +133,7 @@ collectConstantTypes state statements =
 
                 {- This is where the checking is done to make sure all
                  - the type values are in fact valid -}
-                fntypeexpr <- toArrowFn (paramtypes ++ [ret']) typevars
+                fntypeexpr <- toArrowFn (paramtypes ++ [ret'])
 
                 return $ TypeCheckState
                             (Map.singleton name fntypeexpr)
@@ -144,16 +142,16 @@ collectConstantTypes state statements =
             _ -> return $ TypeCheckState Map.empty Map.empty
 
     where
-        toArrowFn [expr] str = toArrowFn' [ExprIdentifier "Unit" $ annotation expr, expr] str
-        toArrowFn xs str = toArrowFn' xs str
+        toArrowFn [expr] = toArrowFn' [ExprIdentifier "Unit" $ annotation expr, expr]
+        toArrowFn xs = toArrowFn' xs
 
-        toArrowFn' [expr] str = toDataType state str expr
-        toArrowFn' (a:as) str = arrowType <$> toDataType state str a <*> toArrowFn' as str
+        toArrowFn' [expr] = toDataType state expr
+        toArrowFn' (a:as) = arrowType <$> toDataType state a <*> toArrowFn' as
 
-toDataType :: (Show annot) => TypeCheckState annot -> Set String -> Expression annot -> Either (String, annot) DataType
-toDataType state str expr = case expr of
+toDataType :: (Show annot) => TypeCheckState annot -> Expression annot -> Either (String, annot) DataType
+toDataType state expr = case expr of
     (ExprIdentifier id' annot) ->
-        if id' `Set.member` str || isLower (head id') then
+        if isLower (head id') then
             return $ TypeVar id' []
             else do
                 {- This guy had better have Kind=0, otherwise it shouldn't be
@@ -166,10 +164,10 @@ toDataType state str expr = case expr of
                             id' ++ ", " ++ show k ++ " expected!", annot)
 
     (Call (ExprIdentifier id' annot) args _) ->
-        if id' `Set.member` str then
+        if isLower (head id') then
             {- In the function  we are type checking, this is
              - a type variable. -}
-            TypeVar id' <$> mapM (toDataType state str) args
+            TypeVar id' <$> mapM (toDataType state) args
             else
                 {- In the function, the data type given is not
                  - a type variable, so we must find it in the state. -}
@@ -181,7 +179,7 @@ toDataType state str expr = case expr of
                         return $ DataType bt args
                         in do
                 structure <- lookupStructure state annot id'
-                typeargs <- mapM (toDataType state str) args
+                typeargs <- mapM (toDataType state) args
                 mkDataType structure typeargs
 
     t ->

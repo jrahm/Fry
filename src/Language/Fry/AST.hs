@@ -21,7 +21,7 @@ data Expression annot =
         deriving Show
 
 data Statement annot =
-         Function {function_context :: [TypedIdentifier annot],
+         Function {function_context :: [Expression annot],
                    function_name :: String,
                    function_params :: [TypedIdentifier annot],
                    function_rettype :: Maybe (Expression annot),
