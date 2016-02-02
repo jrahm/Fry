@@ -38,6 +38,8 @@ data Statement annot =
                     structure_fields :: [TypedIdentifier annot],
                     statement_annotation :: annot
                     }
+       | Return {return_expression :: Expression annot,
+                 statement_annotation :: annot}
 
        | StmtExpr {stmtexpr_expression :: Expression annot, statement_annotation :: annot}
 
@@ -95,6 +97,7 @@ instance Pretty (Statement a) where
                 printf "else\n%s" (indent $ concatMap pretty elsebody) else "")
 
     pretty (StmtExpr expr _) = pretty expr ++ "\n"
+    pretty (Return expr _) = "return " ++ pretty expr ++ "\n"
 
 instance Pretty (Package a) where
     pretty (Package name stmts _) = "package " ++ name ++ "\n\n"

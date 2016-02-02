@@ -1,0 +1,36 @@
+package main
+
+infixr => 10 Map
+
+fn test(A: String)
+end
+
+fn test3(A: String, B: Integer) -> String
+
+end
+
+fn test4(args: List(String))
+
+end
+
+fn test5(fun: String -> Unit) -> Unit
+
+end
+
+fn test6(mp: String => Int => String) -> Int
+
+end
+
+fn map() -> Map(String, Map(Int, String))
+end
+
+fn test2()
+    test("hi there")
+    test3("hi", 4)
+
+    test(test3("hi", 1))
+    test4(test)
+    test5(test)
+
+    test6(map())
+end

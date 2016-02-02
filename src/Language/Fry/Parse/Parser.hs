@@ -77,7 +77,7 @@ statement = try (do
         when (s == "end" || s == "else") $ parserFail ""
     ) *> statement'
     where
-        statement' = structure <|> function <|> ifstmt <|> statementExpr
+        statement' = structure <|> function <|> ifstmt <|> returnstmt <|> statementExpr
 
         idlist :: Parser [String]
         idlist = liftM2 (:) identifier (many $ comma *> identifier)
@@ -110,6 +110,10 @@ statement = try (do
                 (IfStmt <$> expression <*> (eos *> many statement) <*>
                 (keyword "else" *> eos *> many statement <|> return []))
                 <* eob
+
+        returnstmt = annotate $
+            try (keyword "return") *>
+                (Return <$> expression <* eos)
 
         statementExpr = annotate $ StmtExpr <$> expression <* eos
 

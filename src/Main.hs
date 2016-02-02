@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Main where
 
+import Text.Printf
 import Debug.Trace
 import Control.Monad
 import Language.Fry.Tokenizer
@@ -33,5 +34,6 @@ main = (>>=) getArgs $ \argv -> do
                 Left err -> print err
                 Right ast@(Package _ stmts _) -> do
                     prettyPrint ast
-                    prettyPrint $ collectConstantTypes stmts
+                    forM_ (typecheck mempty stmts) $ \(err, pos) ->
+                        printf "%s: %s\n" (show pos) err
                     interpret ast

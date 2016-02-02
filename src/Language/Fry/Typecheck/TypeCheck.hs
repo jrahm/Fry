@@ -1,9 +1,12 @@
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Fry.Typecheck.TypeCheck where
 
 import Language.Fry.AST
 import Control.Monad
+import Debug.Trace
 
-import Data.List
+import Prelude hiding (lookup)
+import Data.List hiding (lookup)
 import Data.Map (Map)
 import Data.Set (Set)
 import qualified Data.Map as Map
@@ -13,14 +16,20 @@ import Data.Monoid
 import Data.Maybe
 
 import Language.Fry.Pretty
+import Control.Monad.Writer
+
+import Control.Applicative
+import Text.Printf
 
 data DataType =
-        DataType
-           {datatype_base :: String,
-            datatype_vars :: [DataType]} |
-            TypeVar String [DataType]
-
-        deriving Show
+        DataType {
+            datatype_base :: String,
+            datatype_vars :: [DataType]
+        } | TypeVar {
+            datatype_base :: String,
+            datatype_vars :: [DataType]
+        }
+        deriving (Eq, Show)
 
 instance Pretty DataType where
     pretty (DataType base vars) = base ++ if null vars then "" else
@@ -37,6 +46,38 @@ data TypeCheckState annot =
 
         deriving Show
 
+lookup :: TypeCheckState a -> String -> Maybe DataType
+lookup Failed {} _ = Nothing
+lookup TypeCheckState {checkstate_varmap = x} s = Map.lookup s x
+
+matchArrow :: [DataType] -> DataType -> Either String DataType
+matchArrow [] dt = Right dt
+matchArrow (t:ts) dt =
+    case dt of
+        DataType "Arrow" [a, b] -> t `compat` a >> matchArrow ts b
+        _ -> Left ("Expected arrow, got" ++ show dt ++ " probable cause, function applied to too many arguments.")
+
+compat :: DataType -> DataType -> Either String ()
+{- return if t1 is compatible as t2-}
+compat (DataType dt vars1) (TypeVar vars vars2) =
+    zipWithM_ compat vars1 vars2
+
+compat (DataType dt1 vars1) (DataType dt2 vars2) = do
+    unless (dt1 == dt2) $
+        Left $ "Could not match type " ++ dt1 ++ " with " ++ dt2
+    zipWithM_ compat vars1 vars2
+
+compat (TypeVar base1 vars1) (TypeVar base2 vars2) =
+    zipWithM_ compat vars1 vars2
+
+compat _ _ = Left "Unable to match type variable to non type variable"
+
+
+unzipArrow :: DataType -> [DataType]
+unzipArrow dt =
+    case dt of
+        DataType "Arrow" [a, b] -> a: unzipArrow b
+
 instance (Show a) => Pretty (TypeCheckState a) where
     pretty (Failed str at) = show at ++ ": TypeCheck failed. " ++ str
     pretty (TypeCheckState mp) = concatMap (\(k, v) -> k ++ " :: " ++ pretty v ++ "\n") $ Map.toList mp
@@ -47,11 +88,73 @@ instance Monoid (TypeCheckState annot) where
 
     mempty = TypeCheckState mempty
 
+alter :: [a] -> [a] -> [a]
+alter [] l2 = l2
+alter l1 _ = l1
+
+typecheck :: forall annot.
+             (Show annot) => TypeCheckState annot ->
+             [Statement annot] -> [(String, annot)] -- return list of error messages
+                                                    -- and their position
+typecheck st stmts =
+    let collect = st `mappend` collectConstantTypes stmts
+    in
+    trace (pretty collect)
+    check collect stmts
+
+    where
+        exprType :: TypeCheckState annot -> Expression annot -> Either String DataType
+        exprType state expr =
+            case expr of
+                ExprIdentifier id _ ->
+                    case lookup state id of
+                        Nothing -> Left ("Undefined reference to " ++ id)
+                        Just d -> return d
+
+                Call fn args _ -> do
+                    functype <- exprType state fn
+                    argsTypes' <- mapM (exprType state) args
+                    let argTypes = argsTypes' `alter` [DataType "Unit" []]
+
+                    matchArrow argTypes functype
+
+                ExprNumber _ _ -> return $ DataType "Integer" []
+
+                StringLiteral _ _ -> return $ DataType "String" []
+
+                ListLiteral exprs _ ->
+                    if null exprs then
+                        return $ DataType "List" [TypeVar "A" []]
+                    else do
+                        typ <- exprType state $ head exprs
+                        mapM_ (exprType state >=> flip compat typ) (tail exprs)
+                        return $ DataType "List" [typ]
+                _ -> undefined
+
+
+        check :: TypeCheckState annot -> [Statement annot] -> [(String, annot)]
+        check state stmts =
+            execWriter $ forM stmts $ tell . checkStatement
+
+            where
+                checkStatement :: Statement annot -> [(String, annot)]
+                checkStatement s = case s of
+                    Function _ _ _ _ body _ ->
+                        typecheck state body
+
+                    StmtExpr expr annot ->
+                        case exprType state expr of
+                            Left err -> [(err, annot)]
+                            Right _ -> []
+
+                    _ -> trace ("WARN: " ++ show s ++ " unimplemented") []
+
+
+
 {- This is going to be a 2-phase type-check. The first phase will not
  - descend into functions, but rather will simply record the type of
  - functions. This wil help with type-checking mutually recursive
  - functions of the sorts. -}
-
 collectConstantTypes :: (Show annot) => [Statement annot] -> TypeCheckState annot
 collectConstantTypes statements =
     (mconcat . flip map statements) $ \stmt ->
@@ -65,6 +168,8 @@ collectConstantTypes statements =
 
                 TypeCheckState $
                     Map.singleton name fntypeexpr
+
+            _ -> TypeCheckState Map.empty
 
     where
         toArrowFn :: (Show annot) => [Expression annot] -> Set String -> DataType

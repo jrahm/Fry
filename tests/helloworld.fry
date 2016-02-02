@@ -17,3 +17,7 @@ fn main(argv: List(String)) -> Unit
 
     "Hello" !! ", World" !! "!"
 end
+
+fn thing()
+    return 5
+end
