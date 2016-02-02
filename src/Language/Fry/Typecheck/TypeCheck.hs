@@ -21,18 +21,36 @@ import Control.Monad.Writer
 import Control.Applicative
 import Text.Printf
 
+{- The Kind of a Type. Right now, since there are
+ - no dependent types in Fry, this is just an integer
+ - telling the number of type variables this Type expects -}
+data Kind = Kind Int
+                deriving (Show, Eq)
+
+{- A base type is a structure. It is a name with a Kind -}
+data BaseType =
+        BaseType {basetype_name :: String,
+                  basetype_kind :: Kind}
+            deriving (Show, Eq)
+
+{- A data type is either an applied base type, or it is
+ - a type variable. In either sense, this type is recursive to
+ - represent the meaning of having types within types. -}
 data DataType =
         DataType {
-            datatype_base :: String,
+            datatype_basetype :: BaseType,
             datatype_vars :: [DataType]
         } | TypeVar {
-            datatype_base :: String,
+            datatype_varname :: String,
             datatype_vars :: [DataType]
         }
         deriving (Eq, Show)
 
+instance Pretty BaseType where
+    pretty (BaseType name _) = name
+
 instance Pretty DataType where
-    pretty (DataType base vars) = base ++ if null vars then "" else
+    pretty (DataType base vars) = pretty base ++ if null vars then "" else
                                     "(" ++ intercalate ", " (map pretty vars) ++ ")"
 
     pretty (TypeVar base vars) = "'" ++ base ++ if null vars then "" else
@@ -54,7 +72,7 @@ matchArrow :: [DataType] -> DataType -> Either String DataType
 matchArrow [] dt = Right dt
 matchArrow (t:ts) dt =
     case dt of
-        DataType "Arrow" [a, b] -> t `compat` a >> matchArrow ts b
+        DataType (BaseType "Arrow" _) [a, b] -> t `compat` a >> matchArrow ts b
         _ -> Left ("Expected arrow, got" ++ show dt ++ " probable cause, function applied to too many arguments.")
 
 compat :: DataType -> DataType -> Either String ()
@@ -64,7 +82,7 @@ compat (DataType dt vars1) (TypeVar vars vars2) =
 
 compat (DataType dt1 vars1) (DataType dt2 vars2) = do
     unless (dt1 == dt2) $
-        Left $ "Could not match type " ++ dt1 ++ " with " ++ dt2
+        Left $ "Could not match type " ++ pretty dt1 ++ " with " ++ pretty dt2
     zipWithM_ compat vars1 vars2
 
 compat (TypeVar base1 vars1) (TypeVar base2 vars2) =
@@ -72,11 +90,6 @@ compat (TypeVar base1 vars1) (TypeVar base2 vars2) =
 
 compat _ _ = Left "Unable to match type variable to non type variable"
 
-
-unzipArrow :: DataType -> [DataType]
-unzipArrow dt =
-    case dt of
-        DataType "Arrow" [a, b] -> a: unzipArrow b
 
 instance (Show a) => Pretty (TypeCheckState a) where
     pretty (Failed str at) = show at ++ ": TypeCheck failed. " ++ str
@@ -87,6 +100,24 @@ instance Monoid (TypeCheckState annot) where
     mappend t@Failed {} _ = t
 
     mempty = TypeCheckState mempty
+
+baseDataType :: String -> DataType
+baseDataType str = DataType (BaseType str (Kind 0)) []
+
+unitType :: DataType
+unitType = baseDataType "Unit"
+
+intType :: DataType
+intType = baseDataType "Int"
+
+stringType :: DataType
+stringType = baseDataType "String"
+
+listType :: DataType -> DataType
+listType typ = DataType (BaseType "List" (Kind 1)) [typ]
+
+arrowType :: DataType -> DataType -> DataType
+arrowType a b = DataType (BaseType "Arrow" (Kind 2)) [a, b]
 
 alter :: [a] -> [a] -> [a]
 alter [] l2 = l2
@@ -114,21 +145,21 @@ typecheck st stmts =
                 Call fn args _ -> do
                     functype <- exprType state fn
                     argsTypes' <- mapM (exprType state) args
-                    let argTypes = argsTypes' `alter` [DataType "Unit" []]
+                    let argTypes = argsTypes' `alter` [unitType]
 
                     matchArrow argTypes functype
 
-                ExprNumber _ _ -> return $ DataType "Integer" []
+                ExprNumber _ _ -> return intType
 
-                StringLiteral _ _ -> return $ DataType "String" []
+                StringLiteral _ _ -> return stringType
 
                 ListLiteral exprs _ ->
                     if null exprs then
-                        return $ DataType "List" [TypeVar "A" []]
+                        return $ listType (TypeVar "A" [])
                     else do
                         typ <- exprType state $ head exprs
                         mapM_ (exprType state >=> flip compat typ) (tail exprs)
-                        return $ DataType "List" [typ]
+                        return $ listType typ
                 _ -> undefined
 
 
@@ -178,7 +209,7 @@ collectConstantTypes statements =
 
         toArrowFn' :: (Show annot) => [Expression annot] -> Set String -> DataType
         toArrowFn' [expr] str = toDataType str expr
-        toArrowFn' (a:as) str = DataType "Arrow" [toDataType str a, toArrowFn' as str]
+        toArrowFn' (a:as) str = arrowType (toDataType str a) (toArrowFn' as str)
 
         toDataType :: (Show annot) => Set String -> Expression annot -> DataType
         toDataType str expr = case expr of
@@ -186,12 +217,13 @@ collectConstantTypes statements =
                 if id' `Set.member` str then
                     TypeVar id' []
                     else
-                        DataType id' []
+                        baseDataType id'
 
             (Call (ExprIdentifier id' _) args _) ->
                 if id' `Set.member` str then
                     TypeVar id' (map (toDataType str) args)
                     else
-                        DataType id' (map (toDataType str) args)
+                        DataType (BaseType id' (Kind $ length args))
+                            (map (toDataType str) args)
 
             t -> error (show (annotation t) ++ ": Unallowed expression in type construct: " ++ pretty t)
