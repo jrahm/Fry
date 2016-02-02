@@ -11,6 +11,11 @@ import Control.Monad
 
 import Text.Printf
 import Safe
+import qualified Data.Set as Set
+
+reserved :: Set.Set String
+reserved = Set.fromList ["end"]
+
 
 data Associativity = LA | RA deriving Show
 data Op = Op {op_symbol :: String, op_prec :: Int, op_orient :: Associativity, op_alias :: String}
@@ -58,7 +63,7 @@ keyword str =
 
 identifier :: (Stream s m (Token a), Show a) => ParsecT s u m String
 identifier = token_string <$> satisfyToken isIdentifier
-    where isIdentifier (Token _ Identifier _) = True
+    where isIdentifier (Token _ Identifier str) = not (str `Set.member` reserved)
           isIdentifier _ = False
 
 number :: (Stream s m (Token a), Show a) => ParsecT s u m Int

@@ -1,0 +1,21 @@
+1. Clean up code in type checking. It has become a huge mess! Break
+   much of the code out into much smaller modules. (Also try to think
+   of more elegant ways to structure the logic. It seems pretty forced
+   at the moment and can be better.)
+
+2. Type checking a call statement needs to be able to deal with
+   type variables. This for now can be handled by doing very simple
+   search-replace on the type variables.
+
+3. Change the type context from a list of typed variables to a list
+   of expressions. I suppose it may use the same AST as a list, although
+   I am not certain. Typeclasses are still a ways off, but it is a good
+   idea to prepare for them in the future.
+
+4. Type checking on return statements! A function should be able to type check itself.
+   This means that return type should be enforced.
+
+5. Call name mangling should be implemented. The structure of the AST should change
+   after type checking to use static names for functions that change based on the
+   type. Perhaps this means implementing a new AST called `Core` in which types are
+   no longer considered.
