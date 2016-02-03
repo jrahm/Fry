@@ -47,18 +47,22 @@ data TypeCheckState annot =
 
 {-| Test the compatibility of the first data type as
  - the second data type. -}
-compat :: DataType -> DataType -> Either String ()
+compat :: DataType -> DataType -> Either String [(String, String)]
 {- return if t1 is compatible as t2-}
-compat (DataType dt vars1) (TypeVar vars vars2) =
-    zipWithM_ compat vars1 vars2
+compat (DataType (BaseType bt _) vars1) (TypeVar name vars2) = do
+    discovered <- concat <$> zipWithM compat vars1 vars2
+    return ((name, bt):discovered)
+
 compat (DataType dt1 vars1) (DataType dt2 vars2) = do
     unless (dt1 == dt2) $
         Left $ "Could not match type " ++ pretty dt1 ++ " with " ++ pretty dt2
-    zipWithM_ compat vars1 vars2
+    concat <$> zipWithM compat vars1 vars2
+
 compat (TypeVar base1 vars1) (TypeVar base2 vars2) = do
     unless (base1 == base2) $
         Left $ "Could not match type " ++ base1 ++ " with " ++ base2
-    zipWithM_ compat vars1 vars2
+    concat <$> zipWithM compat vars1 vars2
+
 compat _ _ = Left "Unable to match type variable to non type variable"
 
 {- Lookup the type of a variable in the type check state.
@@ -72,6 +76,12 @@ lookupStructure state pos string =
     maybe (Left ("Undeclared type identifier: " ++ string, pos)) return
         (Map.lookup string (checkstate_typemap state))
 
+mapDataType :: (Monad m) => (DataType -> m DataType) -> DataType -> m DataType
+mapDataType fn dataType = do
+    dt <- fn dataType
+    case dt of
+        (TypeVar a ds) -> TypeVar a <$> mapM (mapDataType fn) ds
+        (DataType bt ds) -> DataType bt <$> mapM (mapDataType fn) ds
 {- Try to match a list of arguments against an arrow type. If successful,
  - the remaining data type (return type when applied to such arguments)
  - is returned. Otherwise an error message is returned. -}

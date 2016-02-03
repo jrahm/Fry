@@ -178,6 +178,7 @@ toDataType state expr = case expr of
 
                         return $ DataType bt args
                         in do
+
                 structure <- lookupStructure state annot id'
                 typeargs <- mapM (toDataType state) args
                 mkDataType structure typeargs

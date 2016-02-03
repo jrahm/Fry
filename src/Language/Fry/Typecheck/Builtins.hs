@@ -30,5 +30,5 @@ initialState = TypeCheckState
                     , ("Int",    BaseType "Int" (Kind 0))
                     , ("List",   BaseType "List" (Kind 1))
                     , ("String", BaseType "String" (Kind 0))
-                    , ("Arrow", BaseType "String" (Kind 2))
+                    , ("Arrow",  BaseType "Arrow" (Kind 2))
                 ]

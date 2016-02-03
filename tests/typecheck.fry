@@ -1,11 +1,20 @@
 package main
 
 infixl -> 10 Arrow
+infixl <=> 10 Convertible
+infixl => 5 Map
 
 struct Map(k, v)
 end
 
-fn map(l: List(a), f: a -> b) -> List(b)
+fn foldmap(st: t a, fun: a -> b) -> t b
+end
+
+fn [Ord(k)] insert(map: k => v, key: k, val: v)
+
+end
+
+fn [a <=> b] map(l: List(a), f: a -> b) -> List(b)
 end
 
 fn println(arg: String) -> Unit
